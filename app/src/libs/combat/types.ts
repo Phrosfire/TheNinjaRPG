@@ -183,14 +183,18 @@ export type Consequence = {
   heal_sp?: number;
   heal_cp?: number;
   damage?: number;
+  pierce_damage?: number;
   residual?: number;
+  residual_pierce?: number;
   reflect?: number;
   recoil?: number;
   lifesteal_hp?: number;
   absorb_hp?: number;
   absorb_sp?: number;
   absorb_cp?: number;
-  drain?: number;
+  drain_hp?: number;
+  drain_cp?: number;
+  drain_sp?: number;
   poison?: number;
   types?: (GeneralType | StatType | ElementName | PoolType | ZodAllTags["type"])[];
 };
@@ -572,7 +576,7 @@ export type ShieldTagType = z.infer<typeof ShieldTag>;
 
 export const FinalStandTag = z.object({
   ...BaseAttributes,
-  type: type("finalstand"),
+  type: z.literal("finalstand").default("finalstand"),
   description: msg("%user cannot be reduced below 1 HP"),
   power: z.coerce.number().min(0).max(100).default(100),
   powerPerLevel: z.coerce.number().min(0).max(1).default(0),
@@ -762,6 +766,22 @@ export const IncreaseMarriageSlots = z.object({
   type: z.literal("marriageslotincrease").default("marriageslotincrease"),
 });
 
+export const TimeDilationTag = z.object({
+  ...BaseAttributes,
+  ...PowerAttributes,
+  type: z.literal("timedilation").default("timedilation"),
+  description: msg("Decreases action point cost of actions"),
+  calculation: z.enum(["percentage"]).default("percentage"),
+});
+
+export const TimeCompressionTag = z.object({
+  ...BaseAttributes,
+  ...PowerAttributes,
+  type: z.literal("timecompression").default("timecompression"),
+  description: msg("Increases action point cost of actions"),
+  calculation: z.enum(["percentage"]).default("percentage"),
+});
+
 /******************** */
 /** UNIONS OF TAGS   **/
 /******************** */
@@ -817,6 +837,8 @@ export const AllTags = z.union([
   StunTag.default({}),
   SummonPreventTag.default({}),
   SummonTag.default({}),
+  TimeDilationTag.default({}),
+  TimeCompressionTag.default({}),
   UnknownTag.default({}),
   VisualTag.default({}),
   WeaknessTag.default({}),

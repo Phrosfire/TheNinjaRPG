@@ -417,10 +417,18 @@ export const collapseConsequences = (acc: Consequence[], val: Consequence) => {
     if (val.damage) {
       current.damage = current.damage ? current.damage + val.damage : val.damage;
     }
+    if (val.pierce_damage) {
+      current.pierce_damage = current.pierce_damage ? current.pierce_damage + val.pierce_damage : val.pierce_damage;
+    }
     if (val.residual) {
       current.residual = current.residual
         ? current.residual + val.residual
         : val.residual;
+    }
+    if (val.residual_pierce) {
+      current.residual_pierce = current.residual_pierce
+        ? current.residual_pierce + val.residual_pierce
+        : val.residual_pierce;
     }
     if (val.heal_hp) {
       current.heal_hp = current.heal_hp
@@ -466,8 +474,14 @@ export const collapseConsequences = (acc: Consequence[], val: Consequence) => {
     if (val.types) {
       current.types = current.types ? current.types.concat(val.types) : val.types;
     }
-    if (val.drain) {
-      current.drain = current.drain ? current.drain + val.drain : val.drain;
+    if (val.drain_hp) {
+      current.drain_hp = current.drain_hp ? current.drain_hp + val.drain_hp : val.drain_hp;
+    }
+    if (val.drain_cp) {
+      current.drain_cp = current.drain_cp ? current.drain_cp + val.drain_cp : val.drain_cp;
+    }
+    if (val.drain_sp) {
+      current.drain_sp = current.drain_sp ? current.drain_sp + val.drain_sp : val.drain_sp;
     }
     if (val.poison) {
       current.poison = current.poison ? current.poison + val.poison : val.poison;

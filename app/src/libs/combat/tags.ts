@@ -937,7 +937,7 @@ export const damageCalc = (
 
 /** Calculate damage modifier, e.g. from weakness tag */
 export const calcDmgModifier = (
-  dmgEffect: UserEffect & (DamageTagType | PierceTagType),
+  dmgEffect: UserEffect & { type: "damage" | "pierce" },
   target: BattleUserState,
   usersState: UserEffect[],
 ) => {
@@ -989,8 +989,8 @@ export const damageUser = (
       userId: effect.creatorId,
       targetId: effect.targetId,
       types: types,
-      ...(instant ? { damage: damage } : {}),
-      ...(residual ? { residual: damage } : {}),
+      ...(instant ? (effect.type === "pierce" ? { pierce_damage: damage } : { damage: damage }) : {}),
+      ...(residual ? (effect.type === "pierce" ? { residual_pierce: damage } : { residual: damage }) : {}),
     });
   }
   return getInfo(target, effect, "will take damage");
@@ -1076,7 +1076,9 @@ export const fleePrevent = (
   const { power } = getPower(effect);
   const mainCheck = Math.random() < power / 100;
   if (mainCheck) {
-    return getInfo(target, effect, "cannot flee");
+    const info = getInfo(target, effect, "cannot flee");
+    effect.power = 100;
+    reutn info;
   } else if (effect.isNew) {
     effect.rounds = 0;
     return {
@@ -1143,6 +1145,7 @@ export const healPrevent = (
   const mainCheck = Math.random() < power / 100;
   if (mainCheck) {
     const info = getInfo(target, effect, "cannot be healed");
+    effect.power = 100;
     return info;
   } else if (effect.isNew) {
     effect.rounds = 0;
@@ -1265,11 +1268,12 @@ export const lifesteal = (
   const { power, qualifier } = getPower(effect);
   if (!effect.isNew && !effect.castThisRound) {
     consequences.forEach((consequence, effectId) => {
-      if (consequence.userId === effect.targetId && consequence.damage) {
+      if (consequence.userId === effect.targetId && (consequence.damage || consequence.pierce_damage)) {
         const damageEffect = usersEffects.find((e) => e.id === effectId);
         if (damageEffect) {
           const ratio = getEfficiencyRatio(damageEffect, effect);
-          const convert = Math.floor(consequence.damage * (power / 100)) * ratio;
+          const damageDealt = consequence.damage || consequence.pierce_damage || 0;
+          const convert = Math.floor(damageDealt * (power / 100)) * ratio;
           consequence.lifesteal_hp = consequence.lifesteal_hp
             ? consequence.lifesteal_hp + convert
             : convert;
@@ -1294,22 +1298,44 @@ export const drain = (
   // Calculate drain amount
   const { power, qualifier } = getPower(effect);
 
-  // Apply drain effect each round
-  if (!effect.isNew && !effect.castThisRound) {
-    const drainAmount =
-      effect.calculation === "percentage"
-        ? Math.floor((power / 100) * Math.max(target.curChakra, target.curStamina))
-        : power;
+  // Get pools to drain from
+  const pools = "poolsAffected" in effect && effect.poolsAffected 
+    ? effect.poolsAffected 
+    : ["Health" as const];
 
-    // Reduce target's Chakra and Stamina directly
-    const consequence = consequences.get(effect.targetId) || {
+  // Apply drain effect each round
+  if (
+    !effect.isNew && 
+    !effect.castThisRound && 
+    (effect.rounds === undefined || effect.rounds > 0)
+  ) {
+    const consequence: Consequence = consequences.get(effect.targetId) || {
       userId: effect.targetId,
       targetId: effect.targetId,
+      drain_hp: 0,
+      drain_cp: 0,
+      drain_sp: 0
     };
 
-    consequence.drain = consequence.drain
-      ? consequence.drain + drainAmount
-      : drainAmount;
+    // Calculate drain amount for each pool
+    pools.forEach(pool => {
+      const drainAmount = effect.calculation === "percentage"
+        ? Math.floor((power / 100) * (pool === "Health" ? target.curHealth : pool === "Chakra" ? target.curChakra : target.curStamina))
+        : power;
+
+      // Add to existing drain value for the specific pool
+      switch (pool) {
+        case "Health":
+          consequence.drain_hp = (consequence.drain_hp || 0) + drainAmount;
+          break;
+        case "Chakra":
+          consequence.drain_cp = (consequence.drain_cp || 0) + drainAmount;
+          break;
+        case "Stamina":
+          consequence.drain_sp = (consequence.drain_sp || 0) + drainAmount;
+          break;
+      }
+    });
 
     consequences.set(effect.targetId, consequence);
   }
@@ -1317,7 +1343,7 @@ export const drain = (
   return getInfo(
     target,
     effect,
-    `will be drained ${qualifier} of Chakra and Stamina for ${effect.rounds} rounds`,
+    `will be drained ${qualifier} of ${pools.join(", ")} for ${effect.rounds} rounds`,
   );
 };
 
@@ -1475,7 +1501,9 @@ export const movePrevent = (
   const { power } = getPower(effect);
   const mainCheck = Math.random() < power / 100;
   if (mainCheck) {
-    return getInfo(target, effect, "cannot move");
+    const info = getInfo(target, effect, "cannot move");
+    effect.power = 100;
+    return info;
   } else if (effect.isNew) {
     effect.rounds = 0;
     return {
@@ -1518,7 +1546,9 @@ export const onehitkillPrevent = (
   const { power } = getPower(effect);
   const mainCheck = Math.random() < power / 100;
   if (mainCheck) {
-    return getInfo(target, effect, "cannot be one-hit-killed");
+    const info = getInfo(target, effect, "cannot be one-hit-killed");
+    effect.power = 100;
+    return info;
   } else if (effect.isNew) {
     effect.rounds = 0;
     return {
@@ -1591,7 +1621,9 @@ export const robPrevent = (
   const { power } = getPower(effect);
   const mainCheck = Math.random() < power / 100;
   if (mainCheck) {
-    return getInfo(target, effect, "cannot be robbed");
+    const info = getInfo(target, effect, "cannot be robbed");
+    effect.power = 100;
+    return info;
   } else if (effect.isNew) {
     effect.rounds = 0;
     return {
@@ -1609,7 +1641,9 @@ export const cleansePrevent = (
   const { power } = getPower(effect);
   const mainCheck = Math.random() < power / 100;
   if (mainCheck) {
-    return getInfo(target, effect, "cannot be cleansed");
+    const info = getInfo(target, effect, "cannot be cleansed");
+    effect.power = 100;
+    return info;
   } else if (effect.isNew) {
     effect.rounds = 0;
     return {
@@ -1628,6 +1662,7 @@ export const clearPrevent = (
   const mainCheck = Math.random() < power / 100;
   if (mainCheck) {
     const info = getInfo(target, effect, "cannot be cleared");
+    effect.power = 100;
     return info;
   } else if (effect.isNew) {
     effect.rounds = 0;
@@ -1680,7 +1715,9 @@ export const sealPrevent = (
   const { power } = getPower(effect);
   const mainCheck = Math.random() < power / 100;
   if (mainCheck) {
-    return getInfo(target, effect, "bloodline cannot be sealed");
+    const info = getInfo(target, effect, "bloodline cannot be sealed");
+    effect.power = 100;
+    return info;
   } else if (effect.isNew) {
     effect.rounds = 0;
     return {
@@ -1757,7 +1794,9 @@ export const stunPrevent = (
   const { power } = getPower(effect);
   const mainCheck = Math.random() < power / 100;
   if (mainCheck) {
-    return getInfo(target, effect, "cannot be stunned");
+    const info = getInfo(target, effect, "cannot be stunned");
+    effect.power = 100;
+    return info;
   } else if (effect.isNew) {
     effect.rounds = 0;
     return {
@@ -1845,7 +1884,9 @@ export const summonPrevent = (
   const { power } = getPower(effect);
   const mainCheck = Math.random() < power / 100;
   if (mainCheck) {
-    return getInfo(target, effect, "cannot summon companions");
+    const info = getInfo(target, effect, "cannot summon companions");
+    effect.power = 100;
+    return info;
   } else if (effect.isNew) {
     effect.rounds = 0;
     return {
@@ -1864,6 +1905,79 @@ export const weakness = (effect: UserEffect, target: BattleUserState) => {
   } else if (effect.isNew) {
     effect.rounds = 0;
   }
+};
+
+/** Decrease action point cost of actions */
+export const timeDilation = (
+  effect: UserEffect,
+  usersEffects: UserEffect[],
+  target: BattleUserState,
+) => {
+  const { pass, preventTag } = preventCheck(usersEffects, "buffprevent", target);
+  if (preventTag && preventTag.createdRound < effect.createdRound) {
+    if (!pass) return preventResponse(effect, target, "cannot be buffed");
+  }
+
+  const { power } = getPower(effect);
+  const primaryCheck = Math.random() < power / 100;
+
+  if (effect.isNew && effect.rounds && effect.castThisRound) {
+    if (primaryCheck) {
+      return getInfo(target, effect, "action point costs will be decreased");
+    } else {
+      effect.rounds = 0;
+      return {
+        txt: `${target.username}'s time dilation failed to activate`,
+        color: "blue",
+      };
+    }
+  }
+
+  if (!effect.isNew && !effect.castThisRound) {
+    // The actual modification of action point costs happens in actionPointsAfterAction
+    // This tag just provides the information about the effect
+    return getInfo(target, effect, "action point costs are decreased");
+  }
+
+  return getInfo(target, effect, "action point costs will be decreased");
+};
+
+/** Increase action point cost of actions */
+export const timeCompression = (
+  effect: UserEffect,
+  usersEffects: UserEffect[],
+  target: BattleUserState,
+) => {
+  const { pass, preventTag } = preventCheck(usersEffects, "debuffprevent", target);
+  if (preventTag && preventTag.createdRound < effect.createdRound) {
+    if (!pass) return preventResponse(effect, target, "cannot be debuffed");
+  }
+
+  // Make power negative to increase costs
+  effect.power = -Math.abs(effect.power);
+  effect.powerPerLevel = -Math.abs(effect.powerPerLevel);
+  const { power } = getPower(effect);
+  const primaryCheck = Math.random() < Math.abs(power) / 100;
+
+  if (effect.isNew && effect.rounds && effect.castThisRound) {
+    if (primaryCheck) {
+      return getInfo(target, effect, "action point costs will be increased");
+    } else {
+      effect.rounds = 0;
+      return {
+        txt: `${target.username}'s time compression failed to activate`,
+        color: "blue",
+      };
+    }
+  }
+
+  if (!effect.isNew && !effect.castThisRound) {
+    // The actual modification of action point costs happens in actionPointsAfterAction
+    // This tag just provides the information about the effect
+    return getInfo(target, effect, "action point costs are increased");
+  }
+
+  return getInfo(target, effect, "action point costs will be increased");
 };
 
 /**

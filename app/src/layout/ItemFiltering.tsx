@@ -25,15 +25,15 @@ import {
   ItemTypes,
 } from "@/drizzle/constants";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { effectFilters } from "@/libs/train";
+import { effectFilters, statFilters } from "@/libs/train";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { searchJutsuSchema } from "@/validators/jutsu";
+import { searchItemSchema } from "@/validators/item";
 import { Filter } from "lucide-react";
 import Toggle from "@/components/control/Toggle";
 import { useUserData } from "@/utils/UserContext";
 import { canChangeContent } from "@/utils/permissions";
-import type { SearchJutsuSchema } from "@/validators/jutsu";
+import type { SearchItemSchema } from "@/validators/item";
 import type { EffectType } from "@/libs/train";
 import type { AttackTarget, ItemType, AttackMethod } from "@/drizzle/constants";
 import type { ItemRarity, ItemSlotType } from "@/drizzle/schema";
@@ -56,8 +56,8 @@ const ItemFiltering: React.FC<ItemFilteringProps> = (props) => {
   const { name, effect, hidden } = props.state;
 
   // Name search schema
-  const form = useForm<SearchJutsuSchema>({
-    resolver: zodResolver(searchJutsuSchema),
+  const form = useForm<SearchItemSchema>({
+    resolver: zodResolver(searchItemSchema),
     defaultValues: { name: name },
   });
   const watchName = useWatch({ control: form.control, name: "name", defaultValue: "" });
@@ -80,17 +80,17 @@ const ItemFiltering: React.FC<ItemFilteringProps> = (props) => {
       </PopoverTrigger>
       <PopoverContent>
         <div className="grid grid-cols-2 gap-1 gap-x-3">
-          {/* item NAME */}
+          {/* Name */}
           <div>
             <Form {...form}>
-              <Label htmlFor="rank">Name</Label>
+              <Label>Name</Label>
               <FormField
                 control={form.control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
                     <FormControl>
-                      <Input id="name" placeholder="Search item" {...field} />
+                      <Input placeholder="Search items" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -98,48 +98,16 @@ const ItemFiltering: React.FC<ItemFilteringProps> = (props) => {
               />
             </Form>
           </div>
-          {/* Element */}
-          {/* <div>
-            <Label htmlFor="element">Elements</Label>
-            <MultiSelect
-              selected={element}
-              options={ElementNames.map((element) => ({
-                value: element,
-                label: element,
-              }))}
-              onChange={setElement}
-            />
-          </div> */}
-          {/* Effect */}
-          <div>
-            <Select onValueChange={(e) => setEffect(e as EffectType)}>
-              <Label htmlFor="rank">Effect</Label>
-              <SelectTrigger>
-                <SelectValue placeholder={effect} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem key={"Any-effect"} value={"ANY"}>
-                  ANY
-                </SelectItem>
-                {effectFilters.map((ef) => (
-                  <SelectItem key={ef} value={ef}>
-                    {ef}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+
           {/* Item Type */}
           <div>
-            <Select onValueChange={(e) => setItemType(e as ItemType)}>
-              <Label htmlFor="rank">Item Type</Label>
+            <Label>Type</Label>
+            <Select value={itemType} onValueChange={setItemType}>
               <SelectTrigger>
-                <SelectValue placeholder={itemType} />
+                <SelectValue placeholder="Any" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem key={"Any-type"} value={"ANY"}>
-                  ANY
-                </SelectItem>
+                <SelectItem value="ANY">Any</SelectItem>
                 {ItemTypes.map((type) => (
                   <SelectItem key={type} value={type}>
                     {type}
@@ -148,82 +116,99 @@ const ItemFiltering: React.FC<ItemFilteringProps> = (props) => {
               </SelectContent>
             </Select>
           </div>
-          {/* Ratity */}
+
+          {/* Rarity */}
           <div>
-            <Select onValueChange={(e) => setRarity(e as ItemRarity)}>
-              <Label htmlFor="rank">Rarity</Label>
+            <Label>Rarity</Label>
+            <Select value={itemRarity} onValueChange={setRarity}>
               <SelectTrigger>
-                <SelectValue placeholder={itemRarity} />
+                <SelectValue placeholder="Any" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem key={"Any-rarirty"} value="ANY">
-                  ANY
-                </SelectItem>
-                {ItemRarities.map((ir) => (
-                  <SelectItem key={ir} value={ir}>
-                    {ir}
+                <SelectItem value="ANY">Any</SelectItem>
+                {ItemRarities.map((rarity) => (
+                  <SelectItem key={rarity} value={rarity}>
+                    {rarity}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+
           {/* Slot */}
           <div>
-            <Select onValueChange={(e) => setSlot(e as ItemSlotType)}>
-              <Label htmlFor="rank">Slot</Label>
+            <Label>Slot</Label>
+            <Select value={slot} onValueChange={setSlot}>
               <SelectTrigger>
-                <SelectValue placeholder={slot} />
+                <SelectValue placeholder="Any" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem key={"Any-slot"} value="ANY">
-                  ANY
-                </SelectItem>
-                {ItemSlotTypes.map((ir) => (
-                  <SelectItem key={ir} value={ir}>
-                    {ir}
+                <SelectItem value="ANY">Any</SelectItem>
+                {ItemSlotTypes.map((slot) => (
+                  <SelectItem key={slot} value={slot}>
+                    {slot}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          {/* Target */}
-          <div>
-            <Select onValueChange={(e) => setTarget(e as AttackTarget)}>
-              <Label htmlFor="rank">Target</Label>
-              <SelectTrigger>
-                <SelectValue placeholder={target} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem key={"Any-target"} value="ANY">
-                  ANY
-                </SelectItem>
-                {AttackTargets.map((ir) => (
-                  <SelectItem key={ir} value={ir}>
-                    {ir}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+
           {/* Method */}
           <div>
-            <Select onValueChange={(e) => setMethod(e as AttackMethod)}>
-              <Label htmlFor="rank">Method</Label>
+            <Label>Method</Label>
+            <Select value={method} onValueChange={setMethod}>
               <SelectTrigger>
-                <SelectValue placeholder={method} />
+                <SelectValue placeholder="Any" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem key={"Any-method"} value="ANY">
-                  ANY
-                </SelectItem>
-                {AttackMethods.map((ir) => (
-                  <SelectItem key={ir} value={ir}>
-                    {ir}
+                <SelectItem value="ANY">Any</SelectItem>
+                {AttackMethods.map((method) => (
+                  <SelectItem key={method} value={method}>
+                    {method}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+
+          {/* Target */}
+          <div>
+            <Label>Target</Label>
+            <Select value={target} onValueChange={setTarget}>
+              <SelectTrigger>
+                <SelectValue placeholder="Any" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ANY">Any</SelectItem>
+                {AttackTargets.map((target) => (
+                  <SelectItem key={target} value={target}>
+                    {target}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Effects */}
+          <div>
+            <Label>Effects</Label>
+            <MultiSelect
+              selected={effect}
+              options={effectFilters.map((ef) => ({ value: ef, label: ef }))}
+              onChange={setEffect}
+            />
+          </div>
+
+          {/* Stats */}
+          <div>
+            <Label>Stats</Label>
+            <MultiSelect
+              selected={stat}
+              options={statFilters.map((sf) => ({ value: sf, label: sf }))}
+              onChange={setStat}
+            />
+          </div>
+
           {/* Event Item */}
           <div className="mt-1">
             <Toggle
@@ -235,6 +220,7 @@ const ItemFiltering: React.FC<ItemFilteringProps> = (props) => {
               labelInactive="Non-Event"
             />
           </div>
+
           {/* Shop Item */}
           <div className="mt-1">
             <Toggle
@@ -246,6 +232,7 @@ const ItemFiltering: React.FC<ItemFilteringProps> = (props) => {
               labelInactive="Not in Shop"
             />
           </div>
+
           {/* Hidden */}
           {userData && canChangeContent(userData.role) && (
             <div className="mt-1">
@@ -276,9 +263,10 @@ export const getFilter = (state: ItemFilteringState) => {
     slot: state.slot !== "ANY" ? state.slot : undefined,
     target: state.target !== "ANY" ? state.target : undefined,
     method: state.method !== "ANY" ? state.method : undefined,
+    effect: state.effect.length > 0 ? state.effect : undefined,
+    stat: state.stat.length > 0 ? state.stat : undefined,
     eventItems: state.eventItems ? state.eventItems : false,
     onlyInShop: state.onlyInShop ? state.onlyInShop : false,
-    effect: state.effect !== "ANY" ? state.effect : undefined,
     hidden: state.hidden ? state.hidden : undefined,
   };
 };
@@ -287,11 +275,10 @@ export const getFilter = (state: ItemFilteringState) => {
 export const useFiltering = () => {
   // State variables
   const [name, setName] = useState<string>("");
-  const [itemRarity, setRarity] = useState<(typeof ItemRarities)[number] | "ANY">(
-    "ANY",
-  );
+  const [itemRarity, setRarity] = useState<(typeof ItemRarities)[number] | "ANY">("ANY");
   const [itemType, setItemType] = useState<(typeof ItemTypes)[number] | "ANY">("ANY");
-  const [effect, setEffect] = useState<(typeof effectFilters)[number] | "ANY">("ANY");
+  const [effect, setEffect] = useState<string[]>([]);
+  const [stat, setStat] = useState<string[]>([]);
   const [slot, setSlot] = useState<(typeof ItemSlotTypes)[number] | "ANY">("ANY");
   const [target, setTarget] = useState<(typeof AttackTargets)[number] | "ANY">("ANY");
   const [method, setMethod] = useState<(typeof AttackMethods)[number] | "ANY">("ANY");
@@ -320,6 +307,8 @@ export const useFiltering = () => {
     setSlot,
     setTarget,
     slot,
+    stat,
+    setStat,
     target,
   };
 };

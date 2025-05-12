@@ -21,6 +21,7 @@ import { structureBoost } from "@/utils/village";
 import { ANBU_ITEMSHOP_DISCOUNT_PERC } from "@/drizzle/constants";
 import type { ItemType, Item } from "@/drizzle/schema";
 import type { UserWithRelations } from "@/server/api/routers/profile";
+import ItemFiltering, { useFiltering, getFilter } from "@/layout/ItemFiltering";
 
 interface ShopProps {
   userData: NonNullable<UserWithRelations>;
@@ -47,6 +48,9 @@ const Shop: React.FC<ShopProps> = (props) => {
   const [itemtype, setItemtype] = useState<ItemType>(defaultType);
   const isAwake = useAwake(userData);
 
+  // Filter state
+  const filterState = useFiltering();
+
   // tRPC Utility
   const utils = api.useUtils();
 
@@ -59,6 +63,7 @@ const Shop: React.FC<ShopProps> = (props) => {
       onlyInShop: true,
       eventItems: props.eventItems,
       limit: 500,
+      ...getFilter(filterState),
     },
     {
       enabled: userData !== undefined,
@@ -122,8 +127,8 @@ const Shop: React.FC<ShopProps> = (props) => {
           initialBreak={props.initialBreak}
           padding={false}
           topRightContent={
-            categories.length > 1 && (
-              <div className="flex flex-row">
+            <div className="flex flex-row gap-2">
+              {categories.length > 1 && (
                 <Select
                   onValueChange={(e) => {
                     setItemtype(e as ItemType);
@@ -143,8 +148,9 @@ const Shop: React.FC<ShopProps> = (props) => {
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-            )
+              )}
+              <ItemFiltering state={filterState} />
+            </div>
           }
         >
           {props.image && (
